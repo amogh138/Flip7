@@ -7,32 +7,28 @@ import java.util.Collections;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 public class Flip7Panel extends JPanel implements MouseListener {
-    //tracking game status
     private static final int NormalState = 0;
     private static final int FreezeState = 1;
     private static final int GambleState = 2;
     private static final int TARGET_SCORE = 200;
-    private BufferedImage back, blank; // card-back image and a blank placeholder image for a semi-slot system(used in drawingFlip7 fully)
-    private Card empty; //made this for testing
+    private BufferedImage back, blank;
+    private Card empty;
     private ArrayList<Card> deck;           
-    private ArrayList<Card> roundDiscardPile = new ArrayList<>(); // what the bottom line said
-    private ArrayList<Card> mainDiscardPile = new ArrayList<Card>(); // read the game rules stupid
-    private ArrayList<int[]> roundHistory = new ArrayList<>(); //self-explanatory
+    private ArrayList<Card> roundDiscardPile = new ArrayList<>();
+    private ArrayList<Card> mainDiscardPile = new ArrayList<Card>();
+    private ArrayList<int[]> roundHistory = new ArrayList<>();
     private ArrayList<Player> players;
-    private int currentPlayerIndex = 0; // player turn
-    private int dealerIndex = 0; // dealer for said round
+    private int currentPlayerIndex = 0;
+    private int dealerIndex = 0;
     private int roundCount = 1;
     private int gameState = NormalState;
     private boolean roundOver = false;
     private boolean matchOver = false;
     private Player matchWinner = null;
-    //Cheecks to see if someone has a pendinga ction card to use so eithe rflip three or frozen
     private Player pendingActingPlayer;
     private Card pendingActionCard;
     private boolean gameStarted = false;
-    //used for deal (5 clicks = noi more dealing)
     private int openingDealCount = 0;
-    //builds and shuffules the deck, creates 5 players, and starts el gamo
     public Flip7Panel() {
         try {
             buildDeck();
@@ -50,11 +46,9 @@ public class Flip7Panel extends JPanel implements MouseListener {
         addMouseListener(this);
         startRoundSequence(true);
     }
-    //disallows clicking in various places based on states and booleans
     public void mouseClicked(MouseEvent m) {
         int x = m.getX();
         int y = m.getY();
-        // if teh entire thing ended, it only listens for a new mtach input sicne ion want tampering
         if (matchOver) {
             int[] deal = getNewMatchButtonBounds();
             if (contains(x, y, deal[0], deal[1], deal[2], deal[3])) {
@@ -63,7 +57,6 @@ public class Flip7Panel extends JPanel implements MouseListener {
             }
             return;
         }
-        //round just ended so only next round is clickable. again no tampering
         if (roundOver) {
             int boardH = 100 + players.size() * 28 + roundHistory.size() * 20;
             int boardY = getHeight() / 2 - boardH / 2;
@@ -76,7 +69,6 @@ public class Flip7Panel extends JPanel implements MouseListener {
             }
             return;
         }
-        // Waiting for a resolve, more on that under
         if (gameState == FreezeState || gameState == GambleState) {
             for (int seat = 0; seat < players.size(); seat++) {
                 int pIndex = (dealerIndex + seat) % players.size();
@@ -92,7 +84,6 @@ public class Flip7Panel extends JPanel implements MouseListener {
             }
             return;
         }
-        //as per dictator of stroudonia's prefs i made a dealer thing that appears for every round of a round of a match
         if (!gameStarted) {
             int[] deal = getHitButtonBounds();
             if (contains(x, y, deal[0], deal[1], deal[2], deal[3])) {
@@ -101,7 +92,6 @@ public class Flip7Panel extends JPanel implements MouseListener {
             }
             return;
         }
-        //clicking hit = get card, stay = stop playing
         int cardH = getHeight() / 7;
         int cardW = cardH * 67 / 99;
         int deckX = getWidth() / 2 - cardW / 2;
@@ -118,15 +108,14 @@ public class Flip7Panel extends JPanel implements MouseListener {
     public void mouseReleased(MouseEvent m) {}
     public void mouseEntered(MouseEvent m) {}
     public void mouseExited(MouseEvent m) {}
-    // makes a new round
     private void startRoundSequence(boolean isFirstRound) {
         if (!isFirstRound) {
             dealerIndex = (dealerIndex + 1) % players.size();
         }
-        currentPlayerIndex = (dealerIndex + 1) % players.size(); //left of dealer starts always
+        currentPlayerIndex = (dealerIndex + 1) % players.size();
         gameState = NormalState;
         roundOver = false;
-        for (Player p : players) {//this now clears the hands
+        for (Player p : players) {
             p.getCurrentList().clear();
             p.setStatus(Player.PLAY);
         }
@@ -134,7 +123,6 @@ public class Flip7Panel extends JPanel implements MouseListener {
         openingDealCount = 0;
         repaint();
     }
-    //one card if u press hit
     private void hitCurrentPlayer() {
         if (!gameStarted || roundOver || gameState != NormalState) return;
         Player p = players.get(currentPlayerIndex);
@@ -147,7 +135,6 @@ public class Flip7Panel extends JPanel implements MouseListener {
             repaint();
             return;
         }
-        // allows me to switch teh button to hit instead after 5 clicks every round (yes i hard coded 5 ppl cuz im a bum)
         if (openingDealCount < 5) {
             openingDealCount++;
         }
@@ -173,11 +160,9 @@ public class Flip7Panel extends JPanel implements MouseListener {
                 return;
             }
         }
-        // cant have inf hits(prior issue)
         advanceTurn();
         repaint();
     }
-    //idk bro just stay
     private void stayCurrentPlayer() {
         if (!gameStarted || roundOver || gameState != NormalState) return;
         Player p = players.get(currentPlayerIndex);
@@ -191,7 +176,6 @@ public class Flip7Panel extends JPanel implements MouseListener {
         }
         repaint();
     }
-    //again, prior issue
     private void advanceTurn() {
         if (allPlayersDone()) {
             finishRound();
@@ -206,7 +190,6 @@ public class Flip7Panel extends JPanel implements MouseListener {
         }
         finishRound();
     }
-    //checks evry eprsons status to make sure it doesnt rob u of a turn
     private boolean allPlayersDone() {
         for (Player p : players) {
             if (p.getStatus() == Player.PLAY) {
@@ -215,7 +198,6 @@ public class Flip7Panel extends JPanel implements MouseListener {
         }
         return true;
     }
-    //resolving action cards = cant do jack till u give them attention
     private void resolveFreezeTarget(Player target) {
         if (target.getStatus() != Player.PLAY) return;
         target.setStatus(Player.FROZEN);
@@ -248,7 +230,6 @@ public class Flip7Panel extends JPanel implements MouseListener {
         }
         finishTargetResolution();
     }
-    //makes sure it doesnt look like u keep ur freeze/flip 7
     private void cleanupPendingCard() {
         if (pendingActionCard != null) {
             roundDiscardPile.add(pendingActionCard);
@@ -260,7 +241,6 @@ public class Flip7Panel extends JPanel implements MouseListener {
         pendingActionCard = null;
         pendingActingPlayer = null;
     }
-    // remove the barriers disallowing u to excersize free will
     private void finishTargetResolution() {
         cleanupPendingCard();
         if (allPlayersDone()) {
@@ -270,7 +250,6 @@ public class Flip7Panel extends JPanel implements MouseListener {
         }
         repaint();
     }
-    //just math vro
     private int calculateRoundScore(Player p) {
         if (p.getStatus() == Player.LOSE) return 0;
         int numSum = 0;
@@ -293,8 +272,6 @@ public class Flip7Panel extends JPanel implements MouseListener {
         score+=plusSum;
         return score;
     }
-    /*this is teh cleanup and in a sense wipes the entire board for everyhging 
-    except what is necessary, but not hands cuz i wnat u to be able to see them when you see score so u know what happened */
     private void finishRound() {
         if (roundOver) return;
         roundOver = true;
@@ -325,7 +302,6 @@ public class Flip7Panel extends JPanel implements MouseListener {
                 matchOver = true;
                 matchWinner = soleWinner;
             } else {
-                // TS is never happenion sonion
                 matchOver = false;
             }
         }
@@ -365,7 +341,6 @@ public class Flip7Panel extends JPanel implements MouseListener {
         matchWinner = null;
         startRoundSequence(true);
     }
-    //i wnated to be different so i js made this instead of try/catch sue me
     private void buildDeck() throws Exception {
         deck = new ArrayList<Card>();
         BufferedImage zeroImg = ImageIO.read(Flip7Panel.class.getResource("/Image/Zero.png"));
@@ -393,7 +368,6 @@ public class Flip7Panel extends JPanel implements MouseListener {
         back = ImageIO.read(Flip7Panel.class.getResource("/Image/Back.png"));
         blank = ImageIO.read(Flip7Panel.class.getResource("/Image/Blank.png"));
         empty = new Card(blank, "Blank", 0);
-        //TS aint even common ball
         deck.add(new Card(zeroImg, "Num", 0));
         deck.add(new Card(oneImg, "Num", 1));
         for (int k = 0; k < 2; k++) deck.add(new Card(twoImg, "Num", 2));
@@ -419,7 +393,6 @@ public class Flip7Panel extends JPanel implements MouseListener {
         deck.add(new Card(p8, "Plus", 8));
         deck.add(new Card(p10, "Plus", 10));
     }
-    //draws and reshuffles, if main deck is empty steals from discard not round discard
     private Card drawCard() {
         if (deck.isEmpty()) {
             if (!mainDiscardPile.isEmpty()) {
@@ -432,7 +405,6 @@ public class Flip7Panel extends JPanel implements MouseListener {
         }
         return deck.remove(deck.size() - 1);
     }
-    //this is basically revival code and normal stuff or processes (ts is cuz of abhay's presentation)
     private boolean processDraw(Player p, Card card) {
         if (card.isNumberCard()) {
             if (p.hasCard(card)) {
@@ -473,14 +445,11 @@ public class Flip7Panel extends JPanel implements MouseListener {
         p.addCard(card);
         return false;
     }
-    /* anything taht ends with "Bounds" is because I was having syncing issues with listeners
-    and rects, i made these, not necessary if u are willing to scroll a lot */
     private int[] getPlayerSlotBounds(int seat) {
         int w = getWidth();
         int h = getHeight();
         int slotW = 390;
         int slotH = 230;
-        //hardcoding player positions
         if (seat == 0) {
             return new int[]{w / 2 - slotW / 2, h - 230, slotW, slotH};
         } else if (seat == 1) {
@@ -516,11 +485,9 @@ public class Flip7Panel extends JPanel implements MouseListener {
         int stayX = getWidth() / 2 + 15;
         return new int[]{stayX, btnY, btnWidth, btnHeight};
     }
-    //ion wanna do allat if else jazz so i made a helper method
     private boolean contains(int mx, int my, int x, int y, int w, int h) {
         return mx >= x && mx <= x + w && my >= y && my <= y + h;
     }
-    //text in the top left of each player seat
     private String statusText(Player p) {
         switch (p.getStatus()) {
             case Player.LOSE: return "Busted";
@@ -530,7 +497,6 @@ public class Flip7Panel extends JPanel implements MouseListener {
             default: return "Playing";
         }
     }
-    //if non active player explain why
     private String statusSuffix(Player p) {
         switch (p.getStatus()) {
             case Player.LOSE: return " [BUSTED]";
@@ -540,13 +506,10 @@ public class Flip7Panel extends JPanel implements MouseListener {
             default: return "";
         }
     }
-    //drawing everything
     public void paint(Graphics g) {
         super.paint(g);
-        //casino green
         g.setColor(new Color(40, 90, 60));
         g.fillRect(0, 0, getWidth(), getHeight());
-        //the top left text
         g.setColor(Color.BLACK);
         g.fillRect(0, 0, getWidth(), 35);
         g.setColor(Color.WHITE);
@@ -555,9 +518,8 @@ public class Flip7Panel extends JPanel implements MouseListener {
         Player dealerP = players.get(dealerIndex);
         String topText = "Round " + roundCount + "  |  Active Turn: " + activeP.getName() + " (" + statusText(activeP) + ")  |  Dealer: " + dealerP.getName();
         g.drawString(topText, 20, 27);
-        //card piles
         int cardH = getHeight() / 7;
-        int cardW = cardH * 67 / 99; //this is js cuz it was my cropping, do whatever your heart desires
+        int cardW = cardH * 67 / 99; 
         int deckX = getWidth() / 2 - cardW / 2;
         int deckY = 55;
         int discardX = deckX - cardW - 70;
@@ -579,10 +541,8 @@ public class Flip7Panel extends JPanel implements MouseListener {
             boolean isCurrent = (pIndex == currentPlayerIndex) && !roundOver && gameState == NormalState;
             boolean isTargetable = (gameState == FreezeState || gameState == GambleState)
                     && p.getStatus() == Player.PLAY;
-            // Casino Red
             g.setColor(new Color(210,41,40));
             g.fillRect(rx, ry, rw, rh);
-            // Seat border: yellow if it's their turn, cyan if they're a valid target for actions, gray otherwise
             if (isCurrent) {
                 g.setColor(Color.YELLOW);
                 g.drawRect(rx, ry, rw, rh);
@@ -597,7 +557,6 @@ public class Flip7Panel extends JPanel implements MouseListener {
                 g.setColor(Color.GRAY);
                 g.drawRect(rx, ry, rw, rh);
             }
-            // All the seat stuff
             if (isCurrent) {
                 g.setColor(Color.YELLOW);
             } else {
@@ -619,11 +578,9 @@ public class Flip7Panel extends JPanel implements MouseListener {
             String statusBadge = statusSuffix(p);
             String header = p.getName() + dealerBadge + seatLabel + statusBadge;
             g.drawString(header, rx + 10, ry + 20);
-            // the active score of hand and total duringa  round in the seat
             g.setColor(Color.LIGHT_GRAY);
             g.setFont(new Font("Arial", Font.PLAIN, 13));
             g.drawString("Total: " + p.getScore() + "   Hand: " + p.getHandScore(), rx + 10, ry + 38);
-            //resizing thumbnails so u actually know whos active player
             ArrayList<Card> hand = p.getCurrentList();
             int curW;
             int curH;
@@ -634,7 +591,6 @@ public class Flip7Panel extends JPanel implements MouseListener {
                 curW = cardW / 3;
                 curH = cardH / 3;
             }
-            //rotated stay card code
             int slotW = curH;
             int slotH = curW;
             int slotX = rx + rw - slotW - 12;
@@ -645,7 +601,7 @@ public class Flip7Panel extends JPanel implements MouseListener {
             g.drawString("STAY", slotX + 2, slotY - 3);
             boolean isStayed = (p.getStatus() == Player.WAIT || p.getStatus() == Player.FROZEN) && !hand.isEmpty();
             int normalCardsCount;
-            if (isStayed) {//basically sicne i rotate it sideways take it out from normal hand viewing
+            if (isStayed) {
                 normalCardsCount = hand.size() - 1;
             } else {
                 normalCardsCount = hand.size();
@@ -654,7 +610,7 @@ public class Flip7Panel extends JPanel implements MouseListener {
             int cay = ry + 45;
             int caw = Math.max(curW, rw - slotW - 28);
             int cah = rh - 50;
-            g.setClip(cax, cay, caw, cah);//reorder the box based on whats in it, for testing
+            g.setClip(cax, cay, caw, cah);
             int perRow = 6;
             int cx = cax;
             int cy = cay;
@@ -670,7 +626,6 @@ public class Flip7Panel extends JPanel implements MouseListener {
                 }
             }
             g.setClip(0, 0, getWidth(), getHeight());
-            //actual rotate code in motion
             if (isStayed) {
                 Card stayedCard = hand.get(hand.size() - 1);
                 Graphics2D g2 = (Graphics2D) g.create();
@@ -682,7 +637,6 @@ public class Flip7Panel extends JPanel implements MouseListener {
             g.setColor(Color.DARK_GRAY);
             g.drawRect(rx, ry, rw, rh);
         }
-        //just drawing buttons
         int[] hitB = getHitButtonBounds();
         int[] stayB = getStayButtonBounds();
         int hitX = hitB[0], btnY = hitB[1], btnWidth = hitB[2], btnHeight = hitB[3];
@@ -690,7 +644,6 @@ public class Flip7Panel extends JPanel implements MouseListener {
         boolean canAct = !roundOver && gameState == NormalState && gameStarted;
         boolean showDealButton = openingDealCount < 5;
         if (showDealButton) {
-            //cuz like idk no hitting first round
             g.setColor(new Color(50, 100, 180));
             g.fillRect(hitX, btnY, btnWidth, btnHeight);
             g.setColor(Color.BLACK);
@@ -721,7 +674,6 @@ public class Flip7Panel extends JPanel implements MouseListener {
         g.drawRect(stayX, btnY, btnWidth, btnHeight);
         g.setColor(Color.WHITE);
         g.drawString("STAY", stayX + 40, btnY + 27);
-        //top right words
         if (gameState == FreezeState) {
             drawStatusBox(g, "Freeze drawn - click a player's box to freeze them.");
         } else if (gameState == GambleState) {
@@ -734,7 +686,6 @@ public class Flip7Panel extends JPanel implements MouseListener {
             drawScoreboard(g);
         }
     }
-    //draws  apile or an empty outline
     private void drawDeckBox(Graphics g, int x, int y, int w, int h, boolean hasCards, String label) {
         if (hasCards) {
             g.drawImage(back, x, y, w, h, null);
@@ -748,7 +699,6 @@ public class Flip7Panel extends JPanel implements MouseListener {
         g.setFont(new Font("Arial", Font.BOLD, 13));
         g.drawString(label, x, y - 8);
     }
-    // makes the new match button
     private void drawnewMatchButton(Graphics g, String label) {
         int[] b = getNewMatchButtonBounds();
         int bx = b[0], by = b[1], bw = b[2], bh = b[3];
@@ -761,7 +711,6 @@ public class Flip7Panel extends JPanel implements MouseListener {
         int textW = g.getFontMetrics().stringWidth(label);
         g.drawString(label, bx + (bw - textW) / 2, by + 28);
     }
-    //actually draw top left words
     private void drawStatusBox(Graphics g, String text) {
         int w = 340;
         int h = 28;
@@ -773,7 +722,6 @@ public class Flip7Panel extends JPanel implements MouseListener {
         g.setFont(new Font("Arial", Font.BOLD, 12));
         g.drawString(text, x + 8, y + 19);
     }
-    //actually draws the scoreboard based on other data
     private void drawScoreboard(Graphics g) {
         int boardW = 480;
         int boardH = 100 + players.size() * 28 + roundHistory.size() * 20;
@@ -792,7 +740,7 @@ public class Flip7Panel extends JPanel implements MouseListener {
             g.drawString("ROUND OVER - STANDINGS", boardX + 20, boardY + 35);
         }
         ArrayList<Player> ranked = new ArrayList<Player>(players);
-        ranked.sort((a, b) -> b.getScore() - a.getScore()); //basic comparable, again skimping out on code, also, vs code told me to
+        ranked.sort((a, b) -> b.getScore() - a.getScore());
         g.setFont(new Font("Arial", Font.PLAIN, 15));
         int y;
         if (matchOver) {
@@ -811,7 +759,6 @@ public class Flip7Panel extends JPanel implements MouseListener {
                     + " (+ " + p.getLastRoundScore() + " this rd)", boardX + 20, y);
             y += 26;
         }
-        //save ur scores for each round
         y += 16;
         g.setColor(Color.YELLOW);
         g.setFont(new Font("Arial", Font.BOLD, 15));
@@ -828,7 +775,6 @@ public class Flip7Panel extends JPanel implements MouseListener {
             }
             g.drawString(line, boardX + 20, y);
         }
-        //draws the enxt round button omg i had so many problems with ts
         if (matchOver) return;
         int nextW = 140;
         int nextH = 35;
